@@ -173,7 +173,6 @@ class ReportManager:
 
     def get_total_sales_report(self, start_date, end_date):
         try:
-            # Câu lệnh SQL lấy tổng doanh thu từ view với điều kiện ngày bắt đầu và kết thúc
             query = """
             SELECT SUM(TotalSales) AS TotalSales, OrderDate
             FROM TotalSalesReport
@@ -181,11 +180,7 @@ class ReportManager:
             GROUP BY OrderDate
             ORDER BY OrderDate;
             """
-        
-            # Thực thi câu lệnh với các tham số ngày bắt đầu và kết thúc
             self.db_connection.cursor.execute(query, (start_date, end_date))
-            
-            # Lấy kết quả
             results = self.db_connection.cursor.fetchall()
             
             if not results:
@@ -193,42 +188,6 @@ class ReportManager:
             else:
                 for row in results:
                     print(f"Date: {row[1]}, Total Sales: {row[0]}")
-        
-            return results
-        except Exception as e:
-            print(f"Error fetching total sales report: {e}")
-
-
-
-    def get_total_sales_report(self, start_date, end_date):
-        try:
-            # Câu lệnh SQL lấy tổng doanh thu từng ngày từ view với điều kiện ngày bắt đầu và kết thúc
-            query = """
-            SELECT SUM(TotalSales) AS TotalSales, OrderDate
-            FROM TotalSalesReport
-            WHERE OrderDate BETWEEN %s AND %s
-            GROUP BY OrderDate
-            ORDER BY OrderDate;
-            """
-        
-            # Thực thi câu lệnh với các tham số ngày bắt đầu và kết thúc
-            self.db_connection.cursor.execute(query, (start_date, end_date))
-        
-            # Lấy kết quả
-            results = self.db_connection.cursor.fetchall()
-        
-            # Kiểm tra và hiển thị kết quả từng ngày
-            if not results:
-                print("No data found for the specified date range.")
-            else:
-                total_sales_all_days = 0
-                print("Sales Report by Date:")
-                for row in results:
-                    print(f"Date: {row[1]}, Total Sales: {row[0]}")
-                    total_sales_all_days += row[0]  # Cộng dồn tổng doanh thu tất cả các ngày
-                
-                # In ra tổng doanh thu tất cả các ngày
-                print(f"\nTotal Sales from {start_date} to {end_date}: {total_sales_all_days}")
         
             return results
         except Exception as e:
