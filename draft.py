@@ -1,4 +1,5 @@
 import mysql.connector
+import pandas as pd
 
 class DatabaseConnection:
     def __init__(self, host, user, password, database):
@@ -107,9 +108,9 @@ class OrderManager:
     def __init__(self, db_connection):
         self.db_connection = db_connection
 
-    def create_order(self, customer_id, order_date, status, employee_id):
+    def create_order(self, customer_id, order_date, employee_id):
         try:
-            self.db_connection.execute_proc('CreateOrder', (customer_id, order_date, status, employee_id))
+            self.db_connection.execute_proc('CreateOrder', (customer_id, order_date, employee_id))
             print(f"Order for customer {customer_id} created successfully.")
         except Exception as e:
             print(f"Error creating order for customer {customer_id}: {e}")
@@ -159,70 +160,92 @@ class EmployeeManager:
         except Exception as e:
             print(f"Error updating employee {employee_id}: {e}")
 
+    def search_employee(self, employee_name):
+        try:
+            self.db_connection.execute_proc('SearchEmployee', (employee_name,))
+            results = self.db_connection.fetch_results()
+            print(f"Search result for customer '{employee_name}': {results}")
+            return results
+        except Exception as e:
+            print(f"Error searching customer '{employee_name}': {e}")
+
 class ReportManager:
     def __init__(self, db_connection):
         self.db_connection = db_connection
 
-    def get_sales_report_today(self):
-        try:
-            self.db_connection.cursor.execute("SELECT * FROM SalesReportToday")
-            results = self.db_connection.cursor.fetchall()
-            if not results:
-                print("No data found for today's sales report.")
-            else:
-                print(f"Sales report for today: {results}")
-            return results
-        except Exception as e:
-            print(f"Error fetching sales report for today: {e}")
-
-    def get_sales_report_by_employee(self):
-        try:
-            self.db_connection.cursor.execute("SELECT * FROM SalesReportByEmployee")
-            results = self.db_connection.cursor.fetchall()
-            if not results:
-                print("No data found for sales report by employee.")
-            else:
-                print(f"Sales report by employee: {results}")
-            return results
-        except Exception as e:
-            print(f"Error fetching sales report by employee: {e}")
-
     def get_total_sales_report(self, start_date, end_date):
         try:
-            query = """
-            SELECT SUM(TotalSales) AS TotalSales, OrderDate
-            FROM TotalSalesReport
-            WHERE OrderDate BETWEEN %s AND %s
-            GROUP BY OrderDate
-            ORDER BY OrderDate;
-            """
+            # Truy vấn trực tiếp mà không cần stored procedure
+            query = '''
+                SELECT 
+                    O.OrderID,
+                    OD.ProductID,
+                    OD.SalePrice,
+                    O.OrderDate
+                FROM Orders O
+                JOIN OrderDetails OD ON O.OrderID = OD.OrderID
+                WHERE O.OrderDate BETWEEN %s AND %s
+                ORDER BY O.OrderDate;
+            '''
             self.db_connection.cursor.execute(query, (start_date, end_date))
-            results = self.db_connection.cursor.fetchall()
-            if not results:
-                print("No data found for the specified date range.")
-            else:
-                total_sales_all_days = 0
-                print("Sales Report by Date:")
-                for row in results:
-                    print(f"Date: {row[1]}, Total Sales: {row[0]}")
-                    total_sales_all_days += row[0]
-                print(f"\nTotal Sales from {start_date} to {end_date}: {total_sales_all_days}")
-            return results
+            return self.db_connection.cursor.fetchall()
         except Exception as e:
             print(f"Error fetching total sales report: {e}")
+            return []
 
-    def calculate_discount(self, product_id, discount_rate):
+    def get_sales_by_employee(self):
         try:
-            self.db_connection.cursor.callproc('CalculateDiscount', (product_id, discount_rate))
-            # Assuming the stored procedure returns results
-            results = self.db_connection.fetch_results()
-            if not results:
-                print(f"No discount calculated for product {product_id}.")
-            else:
-                print(f"Discounted price for product {product_id} with {discount_rate}% discount: {results}")
-            return results
+            query = "SELECT * FROM SalesReportByEmployee;"
+            self.db_connection.cursor.execute(query)
+            return self.db_connection.cursor.fetchall()
         except Exception as e:
-            print(f"Error calculating discount for product {product_id}: {e}")
+            print(f"Error fetching sales by employee: {e}")
+            return []
+
+    def get_sales_by_product(self):
+        try:
+            query = "SELECT * FROM SalesReportByProduct;"
+            self.db_connection.cursor.execute(query)
+            return self.db_connection.cursor.fetchall()
+        except Exception as e:
+            print(f"Error fetching sales by product: {e}")
+            return []
+
+    def get_sales_by_customer(self):
+        try:
+            query = "SELECT * FROM SalesReportByCustomer;"
+            self.db_connection.cursor.execute(query)
+            return self.db_connection.cursor.fetchall()
+        except Exception as e:
+            print(f"Error fetching sales by customer: {e}")
+            return []
+
+    def get_top_employees(self, top_n):
+        try:
+            query = "CALL GetTopEmployees(%s);"
+            self.db_connection.cursor.execute(query, (top_n,))
+            return self.db_connection.cursor.fetchall()
+        except Exception as e:
+            print(f"Error fetching top employees: {e}")
+            return []
+
+    def get_top_selling_products(self, top_n):
+        try:
+            query = "CALL GetTopSellingProducts(%s);"
+            self.db_connection.cursor.execute(query, (top_n,))
+            return self.db_connection.cursor.fetchall()
+        except Exception as e:
+            print(f"Error fetching top selling products: {e}")
+            return []
+
+    def get_top_customers(self, top_n):
+        try:
+            query = "CALL GetTopCustomers(%s);"
+            self.db_connection.cursor.execute(query, (top_n,))
+            return self.db_connection.cursor.fetchall()
+        except Exception as e:
+            print(f"Error fetching top customers: {e}")
+            return []
 
 
 db = DatabaseConnection('localhost', 'root', '123456', 'sales_management')
@@ -242,40 +265,50 @@ from datetime import datetime
 st.title('Sales Management System')
 
 # Chọn chức năng
-menu = ["Customer Management", "Product Management", "Order Management", "Employee Management", "Sales Reports"]
+menu = ["Customer Management", "Product Management", "Order Management", "Order Details Management", "Employee Management", "Sales Reports"]
 choice = st.sidebar.selectbox("Select a task", menu)
 
 if choice == "Customer Management":
     st.subheader("Customer Management")
-    
-    # Đăng ký khách hàng
-    with st.form(key="register_customer_form"):
-        name = st.text_input("Name")
-        address = st.text_input("Address")
-        phone = st.text_input("Phone")
-        submit_button = st.form_submit_button("Register Customer")
-        
-        if submit_button:
-            customer_manager.register_customer(name, address, phone)
-            st.success(f"Customer {name} registered successfully!")
-    
-    # Cập nhật khách hàng
-    with st.form(key="update_customer_form"):
-        customer_id = st.text_input("Customer ID")
-        name = st.text_input("Name")
-        address = st.text_input("Address")
-        phone = st.text_input("Phone")
-        submit_button = st.form_submit_button("Update Customer")
-        
-        if submit_button:
-            customer_manager.update_customer(customer_id, name, address, phone)
-            st.success(f"Customer {customer_id} updated successfully!")
-    
-    # Tìm kiếm khách hàng
-    search_name = st.text_input("Search for Customer")
-    if st.button("Search"):
-        results = customer_manager.search_customer(search_name)
-        st.write(results)
+
+    tab1, tab2, tab3 = st.tabs(["Register Customer", "Update Customer", "Search Customer"])
+
+    # Tab 1: Đăng ký khách hàng
+    with tab1:
+        st.subheader("Register Customer")
+        with st.form(key="register_customer_form"):
+            name = st.text_input("Name", key="register_name")
+            address = st.text_input("Address", key="register_address")
+            phone = st.text_input("Phone", key="register_phone")
+            submit_button = st.form_submit_button("Register Customer")
+            if submit_button:
+                customer_manager.register_customer(name, address, phone)
+                st.success(f"Customer '{name}' registered successfully!")
+
+    # Tab 2: Cập nhật thông tin khách hàng
+    with tab2:
+        st.subheader("Update Customer")
+        with st.form(key="update_customer_form"):
+            customer_id = st.text_input("Customer ID", key="update_id")
+            name = st.text_input("New Name", key="update_name")
+            address = st.text_input("New Address", key="update_address")
+            phone = st.text_input("New Phone", key="update_phone")
+            submit_button = st.form_submit_button("Update Customer")
+            if submit_button:
+                customer_manager.update_customer(customer_id, name, address, phone)
+                st.success(f"Customer ID '{customer_id}' updated successfully!")
+
+    # Tab 3: Tìm kiếm khách hàng
+    with tab3:
+        st.subheader("Search Customer")
+        search_name = st.text_input("Enter Name to Search", key="search_customer")
+        if st.button("Search Customer"):
+            results = customer_manager.search_customer(search_name)
+            if results:
+                for row in results:
+                    st.write(f"Customer ID: {row[0]}, Name: {row[1]}, Address: {row[2]}, Phone: {row[3]}")
+            else:
+                st.warning("No matching customer found.")
 
 elif choice == "Product Management":
     st.subheader("Product Management")
@@ -331,49 +364,182 @@ elif choice == "Product Management":
 
 elif choice == "Order Management":
     st.subheader("Order Management")
-    
-    # Tạo đơn hàng
-    with st.form(key="create_order_form"):
-        customer_id = st.number_input("Customer ID", min_value=1)
-        order_date = st.date_input("Order Date", value=datetime.today())
-        status = st.selectbox("Order Status", ["Pending", "Shipped", "Delivered"])
-        employee_id = st.number_input("Employee ID", min_value=1)
-        submit_button = st.form_submit_button("Create Order")
-        
-        if submit_button:
-            order_manager.create_order(customer_id, order_date, status, employee_id)
-            st.success(f"Order for customer {customer_id} created successfully!")
 
-    # Cập nhật trạng thái đơn hàng
-    with st.form(key="update_order_status_form"):
-        order_id = st.number_input("Order ID", min_value=1)
-        status = st.selectbox("Order Status", ["Pending", "Shipped", "Delivered"])
-        submit_button = st.form_submit_button("Update Order Status")
+    tab1, tab2, tab3 = st.tabs(["Create Order", "Update Order Status", "Track Order"])
+
+    # Tab 1: Tạo đơn hàng
+    with tab1:
+        st.subheader("Create Order")
+        with st.form(key="create_order_form"):
+            customer_id = st.text_input("Customer ID", key="create_customer_id")
+            employee_id = st.text_input("Employee ID", key="create_employee_id")
+            order_date = st.date_input("Order Date", value=datetime.today())
+            submit_button = st.form_submit_button("Create Order")
+            
+            if submit_button:
+                order_manager.create_order(customer_id, order_date, employee_id)
+                st.success(f"Order for customer {customer_id} created successfully!")
+
+    # Tab 2: Cập nhật trạng thái đơn hàng
+    with tab2:
+        st.subheader("Update Order Status")
+        with st.form(key="update_order_status_form"):
+            order_id = st.text_input("Order ID", key="update_order_id")
+            status = st.selectbox("Order Status", ["Pending", "Completed", "Cancelled", "Shipped"])
+            submit_button = st.form_submit_button("Update Order Status")
+            
+            if submit_button:
+                order_manager.update_order_status(order_id, status)
+                st.success(f"Order {order_id} status updated to {status}")
+
+    # Tab 3: Theo dõi trạng thái đơn hàng
+    with tab3:
+        st.subheader("Track Order")
+        with st.form(key="track_order_form"):
+            order_id = st.text_input("Order ID", key="track_order_id")
+            submit_button = st.form_submit_button("Track Order")
+            
+            if submit_button:
+                try:
+                    # Gọi phương thức track_order để lấy kết quả
+                    results = order_manager.track_order(order_id)
+                    if results:
+                        order_info = results[0]  # Giả sử kết quả trả về là một list với một tuple
+                        st.write(f"Order ID: {order_info[0]}")
+                        st.write(f"Customer ID: {order_info[1]}")
+                        st.write(f"Order Date: {order_info[2]}")
+                        st.write(f"Status: {order_info[3]}")
+                        st.write(f"Employee ID: {order_info[4]}")
+                    else:
+                        st.warning(f"No information found for Order ID {order_id}.")
+                except Exception as e:
+                    st.error(f"Error tracking order {order_id}: {e}")
+
+elif choice == "Order Details Management":
+    st.subheader("Add Order Details")
+
+    with st.form(key="add_order_details_form"):
+        order_id = st.text_input("Order ID", key="add_order_id")
+        product_id = st.text_input("Product ID", key="add_product_id")
+        quantity = st.number_input("Quantity", min_value=1, step=1, key="add_quantity")
+        submit_button = st.form_submit_button("Add Order Details")
         
         if submit_button:
-            order_manager.update_order_status(order_id, status)
-            st.success(f"Order {order_id} status updated to {status}")
+            try:
+                # Gọi phương thức add_order_details từ order_details_manager
+                order_details_manager.add_order_details(order_id, product_id, quantity)
+                st.success(f"Order details added for order {order_id}, product {product_id}.")
+            except Exception as e:
+                st.error(f"Error adding order details: {e}")
 
 elif choice == "Employee Management":
     st.subheader("Employee Management")
-    
-    # Thêm nhân viên
-    with st.form(key="add_employee_form"):
-        name = st.text_input("Employee Name")
-        job_title = st.text_input("Job Title")
-        submit_button = st.form_submit_button("Add Employee")
-        
-        if submit_button:
-            employee_manager.add_employee(name, job_title)
-            st.success(f"Employee {name} added successfully!")
+
+    tab1, tab2, tab3 = st.tabs(["Add Employee", "Update Employee", "Search Employee"])
+
+    with tab1:
+        st.subheader("Add New Employee")
+        with st.form(key="add_employee_form"):
+            name = st.text_input("Employee Name")
+            job_title = st.text_input("Job Title")
+            submit_button = st.form_submit_button("Add Employee")
+            
+            if submit_button:
+                employee_manager.add_employee(name, job_title)
+                st.success(f"Employee {name} added successfully!")
+
+    with tab2:
+        st.subheader("Update Existing Employee")
+        with st.form(key="update_employee_form"):
+            employee_id = st.text_input("Employee ID")
+            updated_name = st.text_input("Updated Name")
+            updated_job_title = st.text_input("Updated Job Title")
+            update_button = st.form_submit_button("Update Employee")
+
+            if update_button:
+                if employee_id and updated_name and updated_job_title:
+                    try:
+                        employee_manager.update_employee(employee_id, updated_name, updated_job_title)
+                        st.success(f"Employee {employee_id} updated successfully!")
+                    except Exception as e:
+                        st.error(f"Error updating employee: {e}")
+                else:
+                    st.warning("Please fill in all fields for update.")
+
+    with tab3:
+        st.subheader("Search Employee")
+        search_name = st.text_input("Enter Name to Search", key="search_employee")
+        if st.button("Search Employee"):
+            results = employee_manager.search_employee(search_name)
+            if results:
+                for row in results:
+                    st.write(f"Employee ID: {row[0]}, Name: {row[1]}, Job Title: {row[2]}")
+            else:
+                st.warning("No matching employee found.")
 
 elif choice == "Sales Reports":
     st.subheader("Sales Reports")
-    
-    # Báo cáo doanh thu tổng hợp theo ngày
-    start_date = st.date_input("Start Date")
-    end_date = st.date_input("End Date")
-    
-    if st.button("Get Total Sales Report"):
-        results = report_manager.get_total_sales_report(start_date, end_date)
-        st.write(results)
+
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        "Total Sales by Date", 
+        "Sales by Employee",
+        "Sales by Product", 
+        "Sales by Customer", 
+        "Top Employees", 
+        "Top Selling Products",
+        "Top Customers"
+    ])
+
+    with tab1:
+        st.subheader("Total Sales by Date")
+        start_date = st.date_input("Start Date", key="total_sales_start")
+        end_date = st.date_input("End Date", key="total_sales_end")
+        if st.button("Get Total Sales Report"):
+            results = report_manager.get_total_sales_report(start_date, end_date)
+            df = pd.DataFrame(results, columns=["OrderID", "ProductID", "SalePrice", "OrderDate"])
+            st.dataframe(df)
+
+    with tab2:
+        st.subheader("Sales by Employee")
+        if st.button("Get Sales by Employee"):
+            results = report_manager.get_sales_by_employee()
+            df = pd.DataFrame(results, columns=["EmployeeID", "EmployeeName", "TotalSales"])
+            st.dataframe(df)
+
+    with tab3:
+        st.subheader("Sales by Product")
+        if st.button("Get Sales by Product"):
+            results = report_manager.get_sales_by_product()
+            df = pd.DataFrame(results, columns=["ProductID", "ProductName", "TotalSales"])
+            st.dataframe(df)
+
+    with tab4:
+        st.subheader("Sales by Customer")
+        if st.button("Get Sales by Customer"):
+            results = report_manager.get_sales_by_customer()
+            df = pd.DataFrame(results, columns=["CustomerID", "CustomerName", "TotalSales"])
+            st.dataframe(df)
+
+    with tab5:
+        st.subheader("Top Employees")
+        top_n = st.number_input("Number of Top Employees", min_value=1, value=5)
+        if st.button("Get Top Employees"):
+            results = report_manager.get_top_employees(top_n)
+            df = pd.DataFrame(results, columns=["EmployeeID", "EmployeeName", "TotalSales"])
+            st.dataframe(df)
+
+    with tab6:
+        st.subheader("Top Selling Products")
+        top_n = st.number_input("Number of Top Products", min_value=1, value=5, key="top_products")
+        if st.button("Get Top Selling Products"):
+            results = report_manager.get_top_selling_products(top_n)
+            df = pd.DataFrame(results, columns=["ProductID", "ProductName", "TotalSales"])
+            st.dataframe(df)
+
+    with tab7:
+        st.subheader("Top Customers")
+        top_n = st.number_input("Number of Top Customers", min_value=1, value=5, key="top_customers")
+        if st.button("Get Top Customers"):
+            results = report_manager.get_top_customers(top_n)
+            df = pd.DataFrame(results, columns=["CustomerID", "CustomerName", "TotalSales"])
+            st.dataframe(df)
