@@ -1,3 +1,4 @@
+
 import mysql.connector
 import pandas as pd
 
@@ -305,8 +306,8 @@ if choice == "Customer Management":
         if st.button("Search Customer"):
             results = customer_manager.search_customer(search_name)
             if results:
-                for row in results:
-                    st.write(f"Customer ID: {row[0]}, Name: {row[1]}, Address: {row[2]}, Phone: {row[3]}")
+                df = pd.DataFrame(results, columns=["CustomerID", "Name", "Address", "Phone"])
+                st.dataframe(df)  # Hiển thị kết quả dưới dạng bảng
             else:
                 st.warning("No matching customer found.")
 
@@ -357,8 +358,8 @@ elif choice == "Product Management":
         if st.button("Search Product"):
             results = product_manager.search_product(product_name)
             if results:
-                for row in results:
-                    st.write(f"Product ID: {row[0]}, Name: {row[1]}, Price: {row[2]}, Stock: {row[3]}")
+                df = pd.DataFrame(results, columns=["ProductID", "ProductName", "Price", "Stock", "Is Active"])
+                st.dataframe(df)  # Hiển thị kết quả dưới dạng bảng
             else:
                 st.warning("No matching product found.")
 
@@ -472,8 +473,8 @@ elif choice == "Employee Management":
         if st.button("Search Employee"):
             results = employee_manager.search_employee(search_name)
             if results:
-                for row in results:
-                    st.write(f"Employee ID: {row[0]}, Name: {row[1]}, Job Title: {row[2]}")
+                df = pd.DataFrame(results, columns=["Employee ID", "Name", "Job Title"])
+                st.dataframe(df)  
             else:
                 st.warning("No matching employee found.")
 
