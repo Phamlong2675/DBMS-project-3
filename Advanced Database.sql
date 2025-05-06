@@ -206,22 +206,6 @@ END $$
 DELIMITER ;
 
 
-DELIMITER $$
-CREATE PROCEDURE GetSalesReportByDate(IN start_date DATE, IN end_date DATE)
-BEGIN
-    SELECT 
-        O.OrderID,
-        OD.ProductID,
-        OD.SalePrice,
-        O.OrderDate
-    FROM OrderDetails OD
-    JOIN Orders O ON OD.OrderID = O.OrderID
-    WHERE O.OrderDate BETWEEN start_date AND end_date
-    ORDER BY O.OrderDate;
-END $$
-DELIMITER ;
-
-
 DELIMITER //
 CREATE TRIGGER UpdateInventoryAfterOrder
 AFTER INSERT ON OrderDetails
@@ -250,5 +234,10 @@ DELIMITER ;
 CREATE INDEX idx_customer_name ON Customers(CustomerName);
 CREATE INDEX idx_product_name ON Products(ProductName);
 CREATE INDEX idx_order_date ON Orders(OrderDate);
+
 CREATE INDEX idx_employee_name ON Employees(EmployeeName);
 CREATE INDEX idx_orderdetails_orderid ON OrderDetails(OrderID);
+
+
+
+
