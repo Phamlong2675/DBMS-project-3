@@ -45,11 +45,15 @@ END; //
 DELIMITER ;
 
 
+ALTER TABLE Products ADD COLUMN IsActive BOOLEAN DEFAULT TRUE;
 DELIMITER //
 CREATE PROCEDURE DeleteProduct(IN p_ProductID VARCHAR(10))
 BEGIN
-    DELETE FROM Products WHERE ProductID = p_ProductID;
-END; //
+    UPDATE Products
+    SET IsActive = FALSE
+    WHERE ProductID = p_ProductID;
+END;
+//
 DELIMITER ;
 
 
@@ -63,10 +67,10 @@ DELIMITER ;
 
 
 DELIMITER //
-CREATE PROCEDURE CreateOrder(IN p_CustomerID VARCHAR(10), IN p_OrderDate DATE, IN p_Status VARCHAR(20), IN p_EmployeeID VARCHAR(10))
+CREATE PROCEDURE CreateOrder(IN p_CustomerID VARCHAR(10), IN p_OrderDate DATE, IN p_EmployeeID VARCHAR(10))
 BEGIN
     INSERT INTO Orders (CustomerID, OrderDate, Status, EmployeeID)
-    VALUES (p_CustomerID, p_OrderDate, p_Status, p_EmployeeID);
+    VALUES (p_CustomerID, p_OrderDate, 'Pending', p_EmployeeID);
 END; //
 DELIMITER ;
 
@@ -118,12 +122,12 @@ BEGIN
 END; //
 DELIMITER ;
 
-
-CREATE OR REPLACE VIEW SalesReportToday AS
-SELECT OD.OrderID, OD.ProductID, OD.Quantity, OD.SalePrice
-FROM OrderDetails OD
-JOIN Orders O ON OD.OrderID = O.OrderID
-WHERE O.OrderDate = CURDATE();
+DELIMITER //
+CREATE PROCEDURE SearchEmployee(IN p_EmployeeName VARCHAR(100))
+BEGIN
+    SELECT * FROM Employees WHERE EmployeeName LIKE CONCAT('%', p_EmployeeName, '%');
+END; //
+DELIMITER ;
 
 
 CREATE OR REPLACE VIEW SalesReportByEmployee AS
@@ -137,12 +141,85 @@ JOIN Employees E ON O.EmployeeID = E.EmployeeID
 GROUP BY E.EmployeeID, E.EmployeeName;
 
 
-CREATE OR REPLACE VIEW TotalSalesReport AS
-SELECT SUM(OD.SalePrice) AS TotalSales, O.OrderDate
+DELIMITER $$
+CREATE PROCEDURE GetTopEmployees(IN top_n INT)
+BEGIN
+    SELECT 
+        EmployeeID,
+        EmployeeName,
+        TotalSales
+    FROM SalesReportByEmployee
+    ORDER BY TotalSales DESC
+    LIMIT top_n;
+END $$
+DELIMITER ;
+
+
+CREATE OR REPLACE VIEW SalesReportByCustomer AS
+SELECT 
+    C.CustomerID,
+    C.CustomerName,
+    SUM(OD.SalePrice) AS TotalSales
 FROM OrderDetails OD
 JOIN Orders O ON OD.OrderID = O.OrderID
-GROUP BY O.OrderDate
-ORDER BY O.OrderDate;
+JOIN Customers C ON O.CustomerID = C.CustomerID
+GROUP BY C.CustomerID, C.CustomerName;
+
+
+DELIMITER $$
+
+CREATE PROCEDURE GetTopCustomers(IN top_n INT)
+BEGIN
+    SELECT 
+        CustomerID,
+        CustomerName,
+        TotalSales
+    FROM SalesReportByCustomer
+    ORDER BY TotalSales DESC
+    LIMIT top_n;
+END $$
+
+DELIMITER ;
+
+
+CREATE OR REPLACE VIEW SalesReportByProduct AS
+SELECT 
+    P.ProductID,
+    P.ProductName,
+    SUM(OD.SalePrice) AS TotalSales
+FROM OrderDetails OD
+JOIN Products P ON OD.ProductID = P.ProductID
+GROUP BY P.ProductID, P.ProductName;
+
+
+DELIMITER $$
+CREATE PROCEDURE GetTopSellingProducts(IN top_n INT)
+BEGIN
+    SELECT 
+        ProductID,
+        ProductName,
+        TotalSales
+    FROM SalesReportByProduct
+    ORDER BY TotalSales DESC
+    LIMIT top_n;
+END $$
+DELIMITER ;
+
+
+DELIMITER $$
+CREATE PROCEDURE GetSalesReportByDate(IN start_date DATE, IN end_date DATE)
+BEGIN
+    SELECT 
+        O.OrderID,
+        OD.ProductID,
+        OD.SalePrice,
+        O.OrderDate
+    FROM OrderDetails OD
+    JOIN Orders O ON OD.OrderID = O.OrderID
+    WHERE O.OrderDate BETWEEN start_date AND end_date
+    ORDER BY O.OrderDate;
+END $$
+DELIMITER ;
 
 
 DELIMITER //
