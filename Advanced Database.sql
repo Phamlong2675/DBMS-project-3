@@ -54,6 +54,15 @@ DELIMITER ;
 
 
 DELIMITER //
+CREATE PROCEDURE SearchProduct(IN p_ProductName VARCHAR(100))
+BEGIN
+    SELECT * FROM Products
+    WHERE ProductName LIKE CONCAT('%', p_ProductName, '%');
+END; //
+DELIMITER ;
+
+
+DELIMITER //
 CREATE PROCEDURE CreateOrder(IN p_CustomerID VARCHAR(10), IN p_OrderDate DATE, IN p_Status VARCHAR(20), IN p_EmployeeID VARCHAR(10))
 BEGIN
     INSERT INTO Orders (CustomerID, OrderDate, Status, EmployeeID)
@@ -166,7 +175,3 @@ CREATE INDEX idx_product_name ON Products(ProductName);
 CREATE INDEX idx_order_date ON Orders(OrderDate);
 CREATE INDEX idx_employee_name ON Employees(EmployeeName);
 CREATE INDEX idx_orderdetails_orderid ON OrderDetails(OrderID);
-
-
-
-
