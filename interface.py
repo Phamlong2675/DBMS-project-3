@@ -261,15 +261,53 @@ report_manager = ReportManager(db)
 
 import streamlit as st
 from datetime import datetime
+import base64
 
-# Giao diện Streamlit
-st.title('Sales Management System')
+def set_background(image_file):
+    with open(image_file, "rb") as f:
+        data = f.read()
+    encoded = base64.b64encode(data).decode()
 
-# Chọn chức năng
-menu = ["Customer Management", "Product Management", "Order Management", "Order Details Management", "Employee Management", "Sales Reports"]
-choice = st.sidebar.selectbox("Select a task", menu)
+    css = f"""
+    <style>
+    .stApp {{
+        background-image: url("data:image/jpg;base64,{encoded}");
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: center;
+    }}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
-if choice == "Customer Management":
+# Gọi hàm để đặt ảnh nền
+set_background("background.jpg")
+
+# Menu chính
+menu = [
+    "Welcome", 
+    "Customer Management", 
+    "Product Management", 
+    "Order Management", 
+    "Order Details Management", 
+    "Employee Management", 
+    "Sales Reports"
+]
+choice = st.sidebar.selectbox("Select a task", menu, index=0)
+
+# Trang Welcome
+if choice == "Welcome":
+    st.markdown("""
+        <div style='display: flex; justify-content: center; align-items: flex-start; height: 100vh; text-align: center; padding-top: 50px; white-space: nowrap;'>
+            <div>
+                <h1 style='font-size: 3em;'>Welcome to the Sales Management System!</h1>
+                <p style='font-size: 1.5em;'>This is your all-in-one system for managing customers, products, orders, employees, and sales reports.</p>
+                <p style='font-size: 1.5em;'>Please choose a task from the menu to get started.</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+elif choice == "Customer Management":
     st.subheader("Customer Management")
 
     tab1, tab2, tab3 = st.tabs(["Register Customer", "Update Customer", "Search Customer"])
