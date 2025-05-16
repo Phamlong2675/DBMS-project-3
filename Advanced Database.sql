@@ -27,6 +27,15 @@ DELIMITER ;
 
 
 DELIMITER //
+CREATE PROCEDURE ShowCustomer()
+BEGIN
+    SELECT * FROM Customers;
+END;
+//
+DELIMITER ;
+
+
+DELIMITER //
 CREATE PROCEDURE AddProduct(IN p_ProductName VARCHAR(100), IN p_Price DECIMAL(10,2), IN p_StockQuantity INT)
 BEGIN
     INSERT INTO Products (ProductName, Price, StockQuantity)
@@ -45,7 +54,6 @@ END; //
 DELIMITER ;
 
 
-ALTER TABLE Products ADD COLUMN IsActive BOOLEAN DEFAULT TRUE;
 DELIMITER //
 CREATE PROCEDURE DeleteProduct(IN p_ProductID VARCHAR(10))
 BEGIN
@@ -60,9 +68,23 @@ DELIMITER ;
 DELIMITER //
 CREATE PROCEDURE SearchProduct(IN p_ProductName VARCHAR(100))
 BEGIN
-    SELECT * FROM Products
-    WHERE ProductName LIKE CONCAT('%', p_ProductName, '%');
-END; //
+    SELECT ProductID, ProductName, Price, StockQuantity
+    FROM Products    
+    WHERE ProductName LIKE CONCAT('%', p_ProductName, '%')
+      AND IsActive = TRUE;
+END;
+//
+DELIMITER ;
+
+
+DELIMITER //
+CREATE PROCEDURE ShowProduct()
+BEGIN
+    SELECT ProductID, ProductName, Price, StockQuantity
+    FROM Products
+    WHERE IsActive = TRUE;
+END;
+//
 DELIMITER ;
 
 
@@ -86,11 +108,9 @@ DELIMITER ;
 
 
 DELIMITER //
-CREATE PROCEDURE TrackOrder(IN p_OrderID VARCHAR(10))
+CREATE PROCEDURE AllOrderDetail()
 BEGIN
-    SELECT O.OrderID, O.CustomerID, O.OrderDate, O.Status, O.EmployeeID
-    FROM Orders O
-    WHERE O.OrderID = p_OrderID;
+    SELECT * FROM OrderDetails;
 END; //
 DELIMITER ;
 
@@ -100,6 +120,23 @@ CREATE PROCEDURE AddOrderDetails(IN p_OrderID VARCHAR(10), IN p_ProductID VARCHA
 BEGIN
     INSERT INTO OrderDetails (OrderID, ProductID, Quantity)
     VALUES (p_OrderID, p_ProductID, p_Quantity);
+END; //
+DELIMITER ;
+
+
+DELIMITER //
+CREATE PROCEDURE SearchOrder(IN p_SearchTerm VARCHAR(100))
+BEGIN
+    SELECT 
+        O.OrderID, 
+        C.CustomerName,
+		E.EmployeeName,
+        O.OrderDate, 
+        O.Status
+    FROM Orders O
+    JOIN Customers C ON O.CustomerID = C.CustomerID
+    JOIN Employees E ON O.EmployeeID = E.EmployeeID
+    WHERE C.CustomerName LIKE CONCAT('%', p_SearchTerm, '%');
 END; //
 DELIMITER ;
 
@@ -127,6 +164,15 @@ CREATE PROCEDURE SearchEmployee(IN p_EmployeeName VARCHAR(100))
 BEGIN
     SELECT * FROM Employees WHERE EmployeeName LIKE CONCAT('%', p_EmployeeName, '%');
 END; //
+DELIMITER ;
+
+
+DELIMITER //
+CREATE PROCEDURE ShowEmployee()
+BEGIN
+    SELECT * FROM Employees;
+END;
+//
 DELIMITER ;
 
 
