@@ -1,6 +1,8 @@
-
 import mysql.connector
 import pandas as pd
+import streamlit as st
+from datetime import datetime
+import base64
 
 class DatabaseConnection:
     def __init__(self, host, user, password, database):
@@ -69,6 +71,14 @@ class CustomerManager:
         except Exception as e:
             print(f"Error searching customer '{customer_name}': {e}")
 
+    def show_customer(self):
+        try:
+            self.db_connection.execute_proc('ShowCustomer', ())
+            results = self.db_connection.fetch_results()
+            return results
+        except Exception as e:
+            print(f"Error showing customers: {e}")
+            return []
 
 class ProductManager:
     def __init__(self, db_connection):
@@ -94,6 +104,15 @@ class ProductManager:
             print(f"Product {product_id} deleted successfully.")
         except Exception as e:
             print(f"Error deleting product {product_id}: {e}")
+
+    def show_product(self):
+        try:
+            self.db_connection.execute_proc('ShowProduct', ())
+            results = self.db_connection.fetch_results()
+            return results
+        except Exception as e:
+            print(f"Error showing products: {e}")
+            return []
 
     def search_product(self, product_name):
         try:
@@ -132,6 +151,26 @@ class OrderManager:
         except Exception as e:
             print(f"Error tracking order {order_id}: {e}")
 
+    def search_order(self, search_term):
+        try:
+            self.db_connection.execute_proc('SearchOrder', (search_term,))
+            results = self.db_connection.fetch_results()
+            print(f"Search results for '{search_term}': {results}")
+            return results
+        except Exception as e:
+            print(f"Error searching orders with term '{search_term}': {e}")
+            return []
+
+    def get_all_order_details(self):
+        try:
+            self.db_connection.execute_proc('AllOrderDetail', ())
+            results = self.db_connection.fetch_results()
+            print(f"All order details retrieved: {results}")
+            return results
+        except Exception as e:
+            print(f"Error retrieving all order details: {e}")
+            return []
+
 class OrderDetailsManager:
     def __init__(self, db_connection):
         self.db_connection = db_connection
@@ -169,6 +208,15 @@ class EmployeeManager:
             return results
         except Exception as e:
             print(f"Error searching customer '{employee_name}': {e}")
+
+    def show_employee(self):
+        try:
+            self.db_connection.execute_proc('ShowEmployee', ())
+            results = self.db_connection.fetch_results()
+            return results
+        except Exception as e:
+            print(f"Error showing employees: {e}")
+            return []
 
 class ReportManager:
     def __init__(self, db_connection):
@@ -259,10 +307,6 @@ employee_manager = EmployeeManager(db)
 report_manager = ReportManager(db)
 
 
-import streamlit as st
-from datetime import datetime
-import base64
-
 def set_background(image_file):
     with open(image_file, "rb") as f:
         data = f.read()
@@ -289,7 +333,6 @@ menu = [
     "Customer Management", 
     "Product Management", 
     "Order Management", 
-    "Order Details Management", 
     "Employee Management", 
     "Sales Reports"
 ]
@@ -310,9 +353,8 @@ if choice == "Welcome":
 elif choice == "Customer Management":
     st.subheader("Customer Management")
 
-    tab1, tab2, tab3 = st.tabs(["Register Customer", "Update Customer", "Search Customer"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Register Customer", "Update Customer", "Search Customer", "All Customer"])
 
-    # Tab 1: Đăng ký khách hàng
     with tab1:
         st.subheader("Register Customer")
         with st.form(key="register_customer_form"):
@@ -324,7 +366,6 @@ elif choice == "Customer Management":
                 customer_manager.register_customer(name, address, phone)
                 st.success(f"Customer '{name}' registered successfully!")
 
-    # Tab 2: Cập nhật thông tin khách hàng
     with tab2:
         st.subheader("Update Customer")
         with st.form(key="update_customer_form"):
@@ -337,7 +378,6 @@ elif choice == "Customer Management":
                 customer_manager.update_customer(customer_id, name, address, phone)
                 st.success(f"Customer ID '{customer_id}' updated successfully!")
 
-    # Tab 3: Tìm kiếm khách hàng
     with tab3:
         st.subheader("Search Customer")
         search_name = st.text_input("Enter Name to Search", key="search_customer")
@@ -349,12 +389,20 @@ elif choice == "Customer Management":
             else:
                 st.warning("No matching customer found.")
 
+    with tab4:
+        st.subheader("All Customer")
+        results = customer_manager.show_customer()
+        if results:
+            df = pd.DataFrame(results, columns=["Customer ID", "Customer Name", "Address", "Phone"])
+            st.dataframe(df)
+        else:
+            st.info("No customers available.")
+
 elif choice == "Product Management":
     st.subheader("Product Management")
 
-    tab1, tab2, tab3, tab4 = st.tabs(["Add Product", "Edit Product", "Delete Product", "Search Product"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Add Product", "Edit Product", "Delete Product", "Search Product", "All Product"])
 
-    # Thêm sản phẩm
     with tab1:
         st.subheader("Add Product")
         with st.form(key="add_product_form"):
@@ -366,7 +414,6 @@ elif choice == "Product Management":
                 product_manager.add_product(name, price, stock_quantity)
                 st.success(f"Product '{name}' added successfully!")
 
-    # Chỉnh sửa sản phẩm
     with tab2:
         st.subheader("Edit Product")
         with st.form(key="edit_product_form"):
@@ -379,7 +426,6 @@ elif choice == "Product Management":
                 product_manager.edit_product(product_id, name, price, stock_quantity)
                 st.success(f"Product ID '{product_id}' updated successfully!")
 
-    # Xoá sản phẩm
     with tab3:
         st.subheader("Delete Product")
         with st.form(key="delete_product_form"):
@@ -389,7 +435,6 @@ elif choice == "Product Management":
                 product_manager.delete_product(product_id)
                 st.success(f"Product ID '{product_id}' deleted successfully!")
 
-    # Tìm kiếm sản phẩm
     with tab4:
         st.subheader("Search Product")
         product_name = st.text_input("Enter Product Name to search", key="search_name")
@@ -401,12 +446,20 @@ elif choice == "Product Management":
             else:
                 st.warning("No matching product found.")
 
+    with tab5:
+        st.subheader("All Product")
+        results = product_manager.show_product()
+        if results:
+            df = pd.DataFrame(results, columns=["Product ID", "Product Name", "Price", "Stock Quantity"])
+            st.dataframe(df)
+        else:
+            st.info("No products available.")
+
 elif choice == "Order Management":
     st.subheader("Order Management")
 
-    tab1, tab2, tab3 = st.tabs(["Create Order", "Update Order Status", "Track Order"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Create Order", "Update Order Status", "Add Order Details", "All Order Details", "Search Orders"])
 
-    # Tab 1: Tạo đơn hàng
     with tab1:
         st.subheader("Create Order")
         with st.form(key="create_order_form"):
@@ -419,7 +472,6 @@ elif choice == "Order Management":
                 order_manager.create_order(customer_id, order_date, employee_id)
                 st.success(f"Order for customer {customer_id} created successfully!")
 
-    # Tab 2: Cập nhật trạng thái đơn hàng
     with tab2:
         st.subheader("Update Order Status")
         with st.form(key="update_order_status_form"):
@@ -431,50 +483,56 @@ elif choice == "Order Management":
                 order_manager.update_order_status(order_id, status)
                 st.success(f"Order {order_id} status updated to {status}")
 
-    # Tab 3: Theo dõi trạng thái đơn hàng
     with tab3:
-        st.subheader("Track Order")
-        with st.form(key="track_order_form"):
-            order_id = st.text_input("Order ID", key="track_order_id")
-            submit_button = st.form_submit_button("Track Order")
+        st.subheader("Add Order Details")
+        with st.form(key="add_order_details_form"):
+            order_id = st.text_input("Order ID", key="add_order_id")
+            product_id = st.text_input("Product ID", key="add_product_id")
+            quantity = st.number_input("Quantity", min_value=1, step=1, key="add_quantity")
+            submit_button = st.form_submit_button("Add Order Details")
             
             if submit_button:
                 try:
-                    # Gọi phương thức track_order để lấy kết quả
-                    results = order_manager.track_order(order_id)
-                    if results:
-                        order_info = results[0]  # Giả sử kết quả trả về là một list với một tuple
-                        st.write(f"Order ID: {order_info[0]}")
-                        st.write(f"Customer ID: {order_info[1]}")
-                        st.write(f"Order Date: {order_info[2]}")
-                        st.write(f"Status: {order_info[3]}")
-                        st.write(f"Employee ID: {order_info[4]}")
-                    else:
-                        st.warning(f"No information found for Order ID {order_id}.")
+                    order_details_manager.add_order_details(order_id, product_id, quantity)
+                    st.success(f"Order details added for order {order_id}, product {product_id}.")
                 except Exception as e:
-                    st.error(f"Error tracking order {order_id}: {e}")
+                    st.error(f"Error adding order details: {e}")
 
-elif choice == "Order Details Management":
-    st.subheader("Add Order Details")
+    with tab4:
+        st.subheader("All Order Details")
+        try:
+            results = order_manager.get_all_order_details()
+            if results:
+                df = pd.DataFrame(results, columns=[
+                    "Order Detail ID", "Order ID", "Product ID", "Quantity", "Sale Price"
+                ])  
+                st.dataframe(df)
+            else:
+                st.warning("No order details found.")
+        except Exception as e:
+            st.error(f"Error retrieving order details: {e}")
 
-    with st.form(key="add_order_details_form"):
-        order_id = st.text_input("Order ID", key="add_order_id")
-        product_id = st.text_input("Product ID", key="add_product_id")
-        quantity = st.number_input("Quantity", min_value=1, step=1, key="add_quantity")
-        submit_button = st.form_submit_button("Add Order Details")
-        
-        if submit_button:
-            try:
-                # Gọi phương thức add_order_details từ order_details_manager
-                order_details_manager.add_order_details(order_id, product_id, quantity)
-                st.success(f"Order details added for order {order_id}, product {product_id}.")
-            except Exception as e:
-                st.error(f"Error adding order details: {e}")
+    with tab5:
+        st.subheader("Search Orders")
+        with st.form(key="search_order_form"):
+            search_term = st.text_input("Customer Name", key="search_customer_name")
+            submit_button = st.form_submit_button("Search")
+
+            if submit_button:
+                try:
+                    results = order_manager.search_order(search_term)
+                    if results:
+                        df = pd.DataFrame(results, columns=["Order ID", "Customer Name", "Employee Name", "Order Date", "Status"])
+                        st.dataframe(df)
+                    else:
+                        st.warning(f"No orders found for customer name containing '{search_term}'.")
+                except Exception as e:
+                    st.error(f"Error searching orders: {e}")
 
 elif choice == "Employee Management":
     st.subheader("Employee Management")
 
-    tab1, tab2, tab3 = st.tabs(["Add Employee", "Update Employee", "Search Employee"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Add Employee", "Update Employee", "Search Employee", "All Employee"])
 
     with tab1:
         st.subheader("Add New Employee")
@@ -516,6 +574,15 @@ elif choice == "Employee Management":
             else:
                 st.warning("No matching employee found.")
 
+    with tab4:
+        st.subheader("All Employee")
+        results = employee_manager.show_employee()
+        if results:
+            df = pd.DataFrame(results, columns=["Employee ID", "Employee Name", "Job Title"])
+            st.dataframe(df)
+        else:
+            st.info("No customers available.")
+
 elif choice == "Sales Reports":
     st.subheader("Sales Reports")
 
@@ -540,24 +607,21 @@ elif choice == "Sales Reports":
 
     with tab2:
         st.subheader("Sales by Employee")
-        if st.button("Get Sales by Employee"):
-            results = report_manager.get_sales_by_employee()
-            df = pd.DataFrame(results, columns=["EmployeeID", "EmployeeName", "TotalSales"])
-            st.dataframe(df)
+        results = report_manager.get_sales_by_employee()
+        df = pd.DataFrame(results, columns=["EmployeeID", "EmployeeName", "TotalSales"])
+        st.dataframe(df)
 
     with tab3:
         st.subheader("Sales by Product")
-        if st.button("Get Sales by Product"):
-            results = report_manager.get_sales_by_product()
-            df = pd.DataFrame(results, columns=["ProductID", "ProductName", "TotalSales"])
-            st.dataframe(df)
+        results = report_manager.get_sales_by_product()
+        df = pd.DataFrame(results, columns=["ProductID", "ProductName", "TotalSales"])
+        st.dataframe(df)
 
     with tab4:
         st.subheader("Sales by Customer")
-        if st.button("Get Sales by Customer"):
-            results = report_manager.get_sales_by_customer()
-            df = pd.DataFrame(results, columns=["CustomerID", "CustomerName", "TotalSales"])
-            st.dataframe(df)
+        results = report_manager.get_sales_by_customer()
+        df = pd.DataFrame(results, columns=["CustomerID", "CustomerName", "TotalSales"])
+        st.dataframe(df)
 
     with tab5:
         st.subheader("Top Employees")
