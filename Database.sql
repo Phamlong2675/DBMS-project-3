@@ -62,45 +62,14 @@ INSERT INTO Employees (EmployeeName, JobTitle) VALUES
 ('Dinh Phuc', 'Sales Assistant'),
 ('Nguyen Hanh', 'Sales Representative');
 
--- Tạo bảng Accounts
-CREATE TABLE Accounts (
-    UserID VARCHAR(10) PRIMARY KEY, 
-    Username VARCHAR(50) UNIQUE,
-    PasswordHash VARCHAR(100),
-    Role ENUM('sales', 'manager'),
-    EmployeeID VARCHAR(10) NOT NULL,
-    FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
-);
-
-DELIMITER //
-CREATE TRIGGER before_insert_accounts
-BEFORE INSERT ON Accounts
-FOR EACH ROW
-BEGIN
-    DECLARE max_id INT DEFAULT 0;
-    SELECT COALESCE(MAX(CAST(SUBSTRING(UserID, 2) AS UNSIGNED)), 0) INTO max_id FROM Accounts;
-    SET NEW.UserID = CONCAT('A', LPAD(max_id + 1, 3, '0'));
-END; //
-DELIMITER ;
-
-INSERT INTO Accounts (Username, PasswordHash, Role, EmployeeID) VALUES
-('ngminh', 'hash1', 'sales','E007'),
-('trananh', 'hash2', 'manager', 'E006'),
-('letuan', 'hash3', 'sales', 'E010'),
-('hoanghoa', 'hash4', 'sales', 'E004'),
-('phamlong', 'hash5', 'sales', 'E008'),
-('doankhoa', 'hash6', 'manager', 'E002'),
-('buihien', 'hash7', 'sales', 'E003'),
-('ngolinh', 'hash8', 'sales', 'E009'),
-('dinhphuc', 'hash9', 'sales', 'E005'),
-('nghanh', 'hash10', 'sales', 'E001');
 
 -- Tạo bảng Products
 CREATE TABLE Products (
     ProductID VARCHAR(10) PRIMARY KEY,
     ProductName VARCHAR(100) NOT NULL,
     Price DECIMAL(10,2),
-    StockQuantity INT
+    StockQuantity INT,
+	IsActive BOOLEAN DEFAULT TRUE
 );
 
 DELIMITER //
